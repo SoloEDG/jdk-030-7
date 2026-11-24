@@ -12,7 +12,10 @@ defineProps<{ document: GameDocument; summary: string }>();
     <ul>
       <li v-for="plate in document.level.plates" :key="plate.id">
         <b :class="{ live: plate.powered }">{{ plate.powered ? "有电" : "断开" }}</b>
-        只认{{ BOX_LABEL[plate.accept] }} · ({{ plate.x }},{{ plate.y }})
+        <template v-if="plate.targetWeight != null">称重 {{ plate.targetWeight }}</template>
+        <template v-else>只认{{ BOX_LABEL[plate.accept] }}</template>
+        <template v-if="plate.floor != null"> · {{ plate.floor }}层</template>
+        · ({{ plate.x }},{{ plate.y }})
       </li>
     </ul>
     <h3>门与地板</h3>

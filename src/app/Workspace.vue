@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, computed } from "vue";
 import { StageView, TileLegend } from "@/features/atlas";
 import { GadgetPanel } from "@/features/gadget";
+import { HoistPanel } from "@/features/hoist";
 import { MoverHud } from "@/features/hauler";
 import { StepMeter } from "@/features/ledger";
 import { LevelRail, RecordBoard } from "@/features/voyage";
@@ -15,6 +16,10 @@ const { counts } = shop.hauler;
 const { summary } = shop.gadget;
 const { steps, status, coverage } = shop.ledger;
 const { catalog, completed } = shop.voyage;
+const tiedCandidates = shop.hoist.tiedCandidates;
+const selectedCandidateId = computed(
+  () => document.value.level.hoist?.selectedCandidateId ?? null,
+);
 
 function onKey(event: KeyboardEvent): void {
   if (!shouldCapture(event)) return;
@@ -55,6 +60,13 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         <MoverHud :counts="counts" />
       </main>
       <aside class="side">
+        <HoistPanel
+          :document="document"
+          :tied-candidates="tiedCandidates"
+          :selected-candidate-id="selectedCandidateId"
+          @select-candidate="shop.hoist.selectCandidate"
+          @lock="shop.lockTie"
+        />
         <StepMeter :steps="steps" :status="status" :coverage="coverage" />
         <GadgetPanel :document="document" :summary="summary" />
         <TileLegend />

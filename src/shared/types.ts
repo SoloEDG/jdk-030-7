@@ -1,3 +1,5 @@
+import type { HoistRigState } from "./hoist";
+
 export type Dir = "n" | "e" | "s" | "w";
 export type TileKind = "wall" | "floor" | "goal" | "gap";
 export type BoxKind = "timber" | "iron" | "glass";
@@ -14,6 +16,11 @@ export interface Box {
   kind: BoxKind;
   x: number;
   y: number;
+  /** Weight units used by hoist energy and dispatch scales. */
+  weight?: number;
+  /** Vertical floor identity; planar x/y alone is not a delivery match. */
+  floor?: number;
+  platformId?: string | null;
 }
 
 export interface Plate {
@@ -24,6 +31,9 @@ export interface Plate {
   doorIds: string[];
   floorIds: string[];
   powered: boolean;
+  floor?: number;
+  orderId?: string;
+  targetWeight?: number;
 }
 
 export interface Door {
@@ -31,6 +41,7 @@ export interface Door {
   x: number;
   y: number;
   open: boolean;
+  floor?: number;
 }
 
 export interface FloorPatch {
@@ -53,6 +64,7 @@ export interface RuntimeLevel {
   plates: Plate[];
   doors: Door[];
   floors: FloorPatch[];
+  hoist?: HoistRigState;
 }
 
 export interface Attempt {
@@ -77,7 +89,13 @@ export interface MoveResult {
   moved: boolean;
   pushed: boolean;
   boxId?: string;
-  reason?: "blocked" | "cleared" | "idle";
+  reason?: "blocked" | "cleared" | "idle" | "busy";
+  hoist?: {
+    boxId: string;
+    platformIds: string[];
+    from: Vec;
+    to: Vec;
+  };
 }
 
 export const BOX_LABEL: Record<BoxKind, string> = {

@@ -1,3 +1,5 @@
+import { supportRopeIds } from "@/features/hoist/lib/rig";
+import { boxFloor, boxWeight } from "@/shared/hoist";
 import { tileCenter } from "./grid";
 import type { Box, Door, FloorPatch, GameDocument, Plate } from "@/shared/types";
 
@@ -42,6 +44,7 @@ export function paintStage(ctx: CanvasRenderingContext2D, document: GameDocument
     }
   }
   for (const floor of level.floors) paintFloor(ctx, floor, tile);
+  if (level.hoist) paintHoist(ctx, document, tile);
   for (const plate of level.plates) paintPlate(ctx, plate, tile);
   for (const door of level.doors) paintDoor(ctx, door, tile);
   for (const box of level.boxes) paintBox(ctx, box, tile);
@@ -108,6 +111,66 @@ function paintFloor(ctx: CanvasRenderingContext2D, floor: FloorPatch, tile: numb
   }
 }
 
+function paintHoist(ctx: CanvasRenderingContext2D, document: GameDocument, tile: number): void {
+  const hoist = document.level.hoist;
+  if (!hoist) return;
+  for (const platform of hoist.platforms) {
+    const ropeIds = supportRopeIds(hoist, platform.id);
+    const active =
+      hoist.selectedCandidateId === hoist.lockCandidateId ||
+      hoist.last?.triggerPlatformId === platform.id;
+    for (const cell of platform.cells) {
+      const px = cell.x * tile;
+      const py = cell.y * tile;
+      const occupied = document.level.boxes.some(
+        (box) => box.x === cell.x && box.y === cell.y,
+      );
+      ctx.fillStyle = occupied ? "rgba(125,155,106,0.30)" : "rgba(201,163,106,0.13)";
+      ctx.fillRect(px + 3, py + 3, tile - 6, tile - 6);
+      ctx.lineWidth = occupied ? 3 : active ? 2 : 1.5;
+      ctx.strokeStyle = occupied ? "#9bc184" : active ? "#e2c184" : "rgba(201,163,106,0.62)";
+      ctx.strokeRect(px + 4, py + 4, tile - 8, tile - 8);
+
+      ropeIds.forEach((ropeId, index) => {
+        const rope = hoist.ropes.find((item) => item.id === ropeId);
+        ctx.fillStyle = rope?.color ?? "#c9a36a";
+        ctx.fillRect(px + 7 + index * 13, py + 7, 10, 3);
+      });
+
+      if (occupied) {
+        ctx.fillStyle = "#9bc184";
+        ctx.font = "bold 9px ui-monospace, monospace";
+        ctx.textAlign = "right";
+        ctx.fillText("厢", px + tile - 7, py + tile - 7);
+      }
+    }
+    const first = platform.cells[0];
+    if (first) {
+      ctx.fillStyle = "#1c1610";
+      ctx.fillRect(first.x * tile + 5, first.y * tile + tile - 17, 34, 13);
+      ctx.strokeStyle = "#c9a36a";
+      ctx.strokeRect(first.x * tile + 5, first.y * tile + tile - 17, 34, 13);
+      ctx.fillStyle = "#c9a36a";
+      ctx.font = "bold 9px ui-monospace, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(`${platform.label} ${platform.floor}F`, first.x * tile + 22, first.y * tile + tile - 7);
+    }
+  }
+
+  if (hoist.busy) {
+    ctx.fillStyle = hoist.phase === "choosing" ? "rgba(181,106,50,0.22)" : "rgba(126,200,200,0.16)";
+    ctx.fillRect(0, 0, document.level.width * tile, document.level.height * tile);
+    ctx.fillStyle = hoist.phase === "choosing" ? "#e8b898" : "#a7e0e0";
+    ctx.font = "bold 18px ui-sans-serif, system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      hoist.phase === "choosing" ? "请在层位图选择同优组并落锁" : "吊盘换层中 · 接口锁定",
+      (document.level.width * tile) / 2,
+      28,
+    );
+  }
+}
+
 function paintPlate(ctx: CanvasRenderingContext2D, plate: Plate, tile: number): void {
   const px = plate.x * tile + 9;
   const py = plate.y * tile + 9;
@@ -121,6 +184,12 @@ function paintPlate(ctx: CanvasRenderingContext2D, plate: Plate, tile: number): 
   ctx.font = "11px ui-serif, Palatino, serif";
   ctx.textAlign = "center";
   ctx.fillText(plate.accept === "timber" ? "木" : plate.accept === "iron" ? "铁" : "玻", px + (tile - 18) / 2, py + 22);
+  if (plate.floor != null) {
+    ctx.fillStyle = plate.powered ? ink : "#d9c39a";
+    ctx.font = "bold 8px ui-monospace, monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`${plate.floor}F`, px + tile - 22, py + 9);
+  }
 }
 
 function paintDoor(ctx: CanvasRenderingContext2D, door: Door, tile: number): void {
@@ -162,6 +231,13 @@ function paintBox(ctx: CanvasRenderingContext2D, box: Box, tile: number): void {
     ctx.fillRect(px + 6, py + 6, 6, 6);
     ctx.fillRect(px + tile - 34, py + tile - 34, 6, 6);
   }
+  const weighLabel = `${boxWeight(box)}·${boxFloor(box)}F`;
+  ctx.fillStyle = "rgba(28,22,16,0.86)";
+  ctx.fillRect(px, py + 20, tile - 16, 10);
+  ctx.fillStyle = "#f1ddb4";
+  ctx.font = "bold 8px ui-monospace, SFMono-Regular, monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(weighLabel, px + (tile - 16) / 2, py + 28);
 }
 
 function paintPlayer(
